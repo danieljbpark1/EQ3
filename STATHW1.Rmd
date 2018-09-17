@@ -1,0 +1,74 @@
+---
+title: "STATHW1"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+set.seed(13)
+
+sim.dat = data.frame("x" = runif(100), "err" = rnorm(100))
+sim.dat = sim.dat %>% mutate("y" = 3+ 6*x + err) 
+```
+
+a. The estimated coefficients are quite different from the true parameters. The linear regression model estimates the y-intercept to be 3.23 and the slope to be 5.37, whereas the true values are 3 and 6, respectively.
+```{r}
+sim.lm = lm(y~x, data=sim.dat)
+summary(sim.lm)
+```
+
+b. Our regression line seems to follow the general trend of the data, but it is still noticeably off from the true line. The slope of the regression line is less steep.
+```{r}
+ggplot(data = sim.dat) + 
+  geom_point(aes(x=x, y=y)) + 
+  geom_abline(aes(intercept=coef(sim.lm)[1], slope=coef(sim.lm)[2])) + 
+  geom_abline(aes(intercept=3, slope=6), color="red") 
+```
+
+c. The mean of our simulated errors is pretty close to the true mean 0 of the normal distribution from which they were taken. There seems to be no obvious pattern to the errors.
+```{r}
+ggplot(data = sim.dat) + 
+  geom_point(aes(x=x, y=err)) + 
+  geom_hline(aes(yintercept=mean(sim.dat$err))) + 
+  geom_hline(aes(yintercept=0), color="red") 
+```
+
+d. We estimate the y-intercept to have mean 3 and stand deviation 0.21. We estimate the slop to have mean 6.01 and standard deviation 0.36.
+```{r}
+n.sim = 1000 #change this to 1000 when you are ready
+sim.df = data.frame("index"=1:n.sim) %>% group_by(index)
+set.seed(13) #again, change the seed to whatever you like
+
+sim.df = sim.df %>% do("index"=.$index, "x"=runif(100), "err"=rnorm(100)) %>% 
+  do("x" = .$x, "y" = 3 + 6*.$x + .$err) %>%
+  do("model" = lm(y~x, data=.))
+
+sim.coefs = sim.df %>%
+  do(data.frame("intercept" = coef(.$mod)[1], "slope" = coef(.$mod)[2]))
+
+summary(sim.coefs)
+sd(sim.coefs$intercept)
+sd(sim.coefs$slope)
+```
+
+e. Histograms of coefficient estimates and 95% confidence intervals. The distribution of Intercept estimates is centered around the true intercept of 3, and 95% of these estimates fall between 2.6 and 3.4. Its shape is roughly symmetric and bimodal. The distribution of Slope estimates is centered approximately around the true slope of 6, and 95% of these estimates fall between 5.33 and 3.41. Its shape is roughly symmetric and unimodal. The means of both distributions should be close to the true values they are trying to estimate.
+```{r}
+sim.CI = apply(sim.coefs, 2, quantile, c(0.025, 0.975))
+sim.CI
+
+ggplot() +
+  geom_histogram(aes(x=sim.coefs$intercept)) +
+  geom_vline(aes(xintercept=sim.CI[,1]), color="blue") +
+  labs(x = "Intercept estimates")
+
+ggplot() +
+  geom_histogram(aes(x=sim.coefs$slope)) +
+  geom_vline(aes(xintercept=sim.CI[,2]), color="blue") +
+  labs(x = "Slope estimates")
+```
+
+f. 
+```{r}
+ggplot(data = sim.coefs) +
+  geom_point(aes(x=sim.coefs$slope, y=sim.coefs$intercept))
+```
